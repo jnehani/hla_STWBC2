@@ -66,6 +66,33 @@ class Hla(HighLevelAnalyzer):
             'info': f'type: {data_frame[1]}, len: {data_frame[2]}, state: {data_frame[3]}, frequency: {data_frame[4] + data_frame[5] * 256 + data_frame[6] * 65536 + data_frame[7] * 16777216}, control_error: {data_frame[8]}, duty_cycle: {data_frame[9]}, bridge_voltage: {data_frame[10] + data_frame[11] * 256}, rx_power: {data_frame[12] + data_frame[13] * 256}, input_voltage: {data_frame[16] + data_frame[17] * 256}'
         })
 
+    def RxPacket_type(self, data_frame: AnalyzerFrame, msg_start: int, msg_end: int):
+        """
+        Process Rx Packet Ask message type (0xC1)
+        Decodes Rx Propetary Packet from the STWBC2-HB chip
+
+        Parameters:
+        - data_frame: List of bytes containing the message data
+        - msg_start: Start timestamp of the message
+        - msg_end: End timestamp of the message
+
+        Message structure:
+        - data_frame[0]: Start marker (0x54)
+        - data_frame[1]: Message type (0xC1)
+        - data_frame[2]: Message length
+        - data_frame[3:]: Message
+        """
+        length = data_frame[2]
+        payload = data_frame[3:3 + length]
+        print("STWBC2_TYPE_RXDATA {")
+        print("Rx ASK Data:", " ".join(f"{b:02X}" for b in payload))
+        print("}")
+        
+        # Create analyzer frame with decoded information
+        return AnalyzerFrame('data', msg_start, msg_end, {
+            'info': f'type: {data_frame[1]}, len: {data_frame[2]}, state: {data_frame[3]}, frequency: {data_frame[4] + data_frame[5] * 256 + data_frame[6] * 65536 + data_frame[7] * 16777216}, control_error: {data_frame[8]}, duty_cycle: {data_frame[9]}, bridge_voltage: {data_frame[10] + data_frame[11] * 256}, rx_power: {data_frame[12] + data_frame[13] * 256}, input_voltage: {data_frame[16] + data_frame[17] * 256}'
+        })
+
     def unknown_type(self, data_frame: AnalyzerFrame, msg_start: int, msg_end: int):
         """
         Process unknown message types
@@ -125,6 +152,9 @@ class Hla(HighLevelAnalyzer):
             if self.type == 0xB3:
                 # Monitor message type
                 response = self.monitor_type(self.byte_buffer, self.msg_start, frame.end_time)
+            elif self.type == 0xC1:
+                # RxPAcket message type
+                response = self.RxPacket_type(self.byte_buffer, self.msg_start, frame.end_time)
             else:
                 # Unknown message type
                 response = self.unknown_type(self.byte_buffer, self.msg_start, frame.end_time)
