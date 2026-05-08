@@ -84,14 +84,16 @@ class Hla(HighLevelAnalyzer):
         """
         length = data_frame[2]
         payload = data_frame[3:3 + length]
+        payload_hex = " ".join(f"{b:02X}" for b in payload)
         print("STWBC2_TYPE_RXDATA {")
-        print("Rx ASK Data:", " ".join(f"{b:02X}" for b in payload))
+        print(f"  Rx Packet Data: {payload_hex}")
         print("}")
         
         # Create analyzer frame with decoded information
         return AnalyzerFrame('data', msg_start, msg_end, {
-            'info': f'type: {data_frame[1]}, len: {data_frame[2]}, state: {data_frame[3]}, frequency: {data_frame[4] + data_frame[5] * 256 + data_frame[6] * 65536 + data_frame[7] * 16777216}, control_error: {data_frame[8]}, duty_cycle: {data_frame[9]}, bridge_voltage: {data_frame[10] + data_frame[11] * 256}, rx_power: {data_frame[12] + data_frame[13] * 256}, input_voltage: {data_frame[16] + data_frame[17] * 256}'
-        })
+    'info': f"type: {data_frame[1]}, len: {data_frame[2]}, RxPacket Data: {payload_hex}"
+})
+
 
     def unknown_type(self, data_frame: AnalyzerFrame, msg_start: int, msg_end: int):
         """
