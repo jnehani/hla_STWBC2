@@ -38,7 +38,7 @@ class Hla(HighLevelAnalyzer):
         """Initialize the analyzer and print current settings"""
         self.display_format = DISPLAY_FILTER_TYPE_CHOICES.get(self.display_types_setting, 'filter')
 
-    def monitor_type(self, msg_start: int, msg_end: int):
+    def monitor_type(self, data_frame: AnalyzerFrame, msg_start: int, msg_end: int):
         """
         Process monitor message type (0xB3)
         Decodes operational parameters from the STWBC2-HB chip
@@ -61,21 +61,21 @@ class Hla(HighLevelAnalyzer):
         - data_frame[16-17]: Input voltage (LSB first)
         """
         print("STWBC2_TYPE_MONITOR {")
-        print(f"  state:          {self.byte_buffer[3]}")
-        print(f"  frequency:      {self.byte_buffer[4] + self.byte_buffer[5] * 256 + self.byte_buffer[6] * 65536 + self.byte_buffer[7] * 16777216} Hz")
-        print(f"  control_error:  {self.byte_buffer[8]}")
-        print(f"  duty_cycle:     {self.byte_buffer[9]} %")
-        print(f"  bridge_voltage: {self.byte_buffer[10] + self.byte_buffer[11] * 256} mV")
-        print(f"  rx_power:       {self.byte_buffer[12] + self.byte_buffer[13] * 256} mW")
-        print(f"  input_voltage:  {self.byte_buffer[16] + self.byte_buffer[17] * 256} mV")
+        print(f"  state:          {data_frame[3]}")
+        print(f"  frequency:      {data_frame[4] + data_frame[5] * 256 + data_frame[6] * 65536 + data_frame[7] * 16777216} Hz")
+        print(f"  control_error:  {data_frame[8]}")
+        print(f"  duty_cycle:     {data_frame[9]} %")
+        print(f"  bridge_voltage: {data_frame[10] + data_frame[11] * 256} mV")
+        print(f"  rx_power:       {data_frame[12] + data_frame[13] * 256} mW")
+        print(f"  input_voltage:  {data_frame[16] + data_frame[17] * 256} mV")
         print("}")
         
         # Create analyzer frame with decoded information
         return AnalyzerFrame('data', msg_start, msg_end, {
-            'info': f'type: Monitor, len: {self.expected_len-3}, state: {self.byte_buffer[3]}, frequency: {self.byte_buffer[4] + self.byte_buffer[5] * 256 + self.byte_buffer[6] * 65536 + self.byte_buffer[7] * 16777216}, control_error: {self.byte_buffer[8]}, duty_cycle: {self.byte_buffer[9]}, bridge_voltage: {self.byte_buffer[10] + self.byte_buffer[11] * 256}, rx_power: {self.byte_buffer[12] + self.byte_buffer[13] * 256}, input_voltage: {self.byte_buffer[16] + self.byte_buffer[17] * 256}'
+            'info': f'type: Monitor, len: {data_frame[2]-3}, state: {data_frame[3]}, frequency: {data_frame[4] + data_frame[5] * 256 + data_frame[6] * 65536 + data_frame[7] * 16777216}, control_error: {data_frame[8]}, duty_cycle: {data_frame[9]}, bridge_voltage: {data_frame[10] + data_frame[11] * 256}, rx_power: {data_frame[12] + data_frame[13] * 256}, input_voltage: {data_frame[16] + data_frame[17] * 256}'
         })
 
-    def RxPacket_type(self, msg_start: int, msg_end: int):
+    def RxPacket_type(self, data_frame: AnalyzerFrame, msg_start: int, msg_end: int):
         """
         Process Rx Packet Ask message type (0xC1)
         Decodes Rx Propetary Packet from the STWBC2-HB chip
@@ -91,8 +91,8 @@ class Hla(HighLevelAnalyzer):
         - data_frame[2]: Message length
         - data_frame[3:]: Message
         """
-        length = self.expected_len
-        payload = self.byte_buffer[3:3 + length]
+        length = data_frame[2]
+        payload = data_frame[3:3 + length]
         payload_hex = " ".join(f"{b:02X}" for b in payload)
         print("STWBC2_TYPE_RXDATA {")
         print(f"  Rx Packet Data: {payload_hex}")
@@ -100,11 +100,11 @@ class Hla(HighLevelAnalyzer):
         
         # Create analyzer frame with decoded information
         return AnalyzerFrame('data', msg_start, msg_end, {
-    'info': f"type: Rx Packet, len: {self.expected_len-3}, RxPacket Data: {payload_hex}"
+    'info': f"type: Rx Packet, len: {data_frame[2]-3}, RxPacket Data: {payload_hex}"
 })
 
 
-    def unknown_type(self, msg_start: int, msg_end: int):
+    def unknown_type(self, data_frame: AnalyzerFrame, msg_start: int, msg_end: int):
         """
         Process unknown message types
         Displays raw message data for debugging or future implementation
@@ -114,9 +114,9 @@ class Hla(HighLevelAnalyzer):
         - msg_start: Start timestamp of the message
         - msg_end: End timestamp of the message
         """
-        print(f"unknown type: {self.type}, len: {self.expected_len-3}, data: {str(self.byte_buffer[:])}, start: {msg_start}, end: {msg_end}")
+        print(f"unknown type: {data_frame[1]}, len: {data_frame[2]-3}, data: {str(data_frame[:])}")
         return AnalyzerFrame('data', msg_start, msg_end, {
-            'info': f'type: {self.type}, len: {self.expected_len-3}, data: {str(self.byte_buffer[:])}'
+            'info': f'type: {data_frame[1]}, len: {data_frame[2]-3}, data: {str(data_frame[:])}'
         })
     
     def decode(self, frame: AnalyzerFrame):
@@ -166,7 +166,7 @@ class Hla(HighLevelAnalyzer):
             if self.display_format == 'all' and self.type not in DATA_TYPES:
                 # Unknown message type
                 self.expected_len = 3
-                response = self.unknown_type(self.msg_start, self.msg_unknown_end)
+                response = self.unknown_type(self.byte_buffer, self.msg_start, self.msg_unknown_end)
                 self.byte_buffer = []
                 self.msg_start = frame.start_time
                 self.byte_buffer.append(data)
@@ -183,14 +183,14 @@ class Hla(HighLevelAnalyzer):
             # Process based on message type
             if self.type == MOMITOR_TYPE:
                 # Monitor message type
-                response = self.monitor_type(self.msg_start, frame.end_time)
+                response = self.monitor_type(self.byte_buffer, self.msg_start, frame.end_time)
             elif self.type == RXPACKET_TYPE:
                 # RxPAcket message type
-                response = self.RxPacket_type(self.msg_start, frame.end_time)
+                response = self.RxPacket_type(self.byte_buffer, self.msg_start, frame.end_time)
             else:
                 if self.display_format == 'all':
                     # Unknown message type
-                    response = self.unknown_type(self.msg_start, frame.end_time)
+                    response = self.unknown_type(self.byte_buffer, self.msg_start, frame.end_time)
             
             # Reset for next message
             self.byte_buffer = []
