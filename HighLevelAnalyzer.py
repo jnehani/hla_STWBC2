@@ -114,9 +114,14 @@ class Hla(HighLevelAnalyzer):
         - msg_start: Start timestamp of the message
         - msg_end: End timestamp of the message
         """
-        print(f"unknown type: {data_frame[1]}, len: {data_frame[2]-3}, data: {str(data_frame[:])}")
+        if (data_frame[1] & 0x80) == 0x80:
+            len = data_frame[2]-3
+        else:
+            len = 1
+        
+        print(f"unknown type: {data_frame[1]}, len: {len}, data: {str(data_frame[:])}")
         return AnalyzerFrame('data', msg_start, msg_end, {
-            'info': f'type: {data_frame[1]}, len: {data_frame[2]-3}, data: {str(data_frame[:])}'
+            'info': f'type: {data_frame[1]}, len: {len}, data: {str(data_frame[:])}'
         })
     
     def decode(self, frame: AnalyzerFrame):
@@ -151,25 +156,22 @@ class Hla(HighLevelAnalyzer):
             else:
                 self.byte_buffer.append(data)
 
-        elif len(self.byte_buffer) == 2:           
-            # Add 3 to include start marker, type, and length bytes
-            self.expected_len = data + 3
-            self.byte_buffer.append(data)
-            if self.display_format == 'all' and self.type not in DATA_TYPES:
-                #Add intermidiate frame time to display unknown type with length
-                self.msg_unknown_end = frame.end_time
-
-        elif len(self.byte_buffer) == 3 and data == STARTFRAME:
-            # There are some data that are send as 0x54 <type> <value> and then after a new message as 0x54. 
-            # In this case, we should dislay the latest message and restart the frame from this byte. 
-            # Subsequent 0x54 bytes inside the payload are valid data and must not trigger a reset.
-            if self.display_format == 'all' and self.type not in DATA_TYPES:
-                # Unknown message type
+        elif len(self.byte_buffer) == 2: 
+            self.byte_buffer.append(data)          
+            if (self.type & 0x80) == 0x80:
+                # If there is the lenght, add 3 to include start marker, type, and length bytes
+                self.expected_len = data + 3
+            else:
+                # There are some data that does not contain length, and the data are as 0x54 <type> <value>.
+                # In this case, we should display the latest message and restart the frame from this byte. 
                 self.expected_len = 3
-                response = self.unknown_type(self.byte_buffer, self.msg_start, self.msg_unknown_end)
+                response = None
+                if self.display_format == 'all' and self.type not in DATA_TYPES:
+                    response = self.unknown_type(self.byte_buffer, self.msg_start, frame.end_time)
+
+                # Reset for next message
                 self.byte_buffer = []
-                self.msg_start = frame.start_time
-                self.byte_buffer.append(data)
+                self.msg_start = None
                 return response
 
         elif len(self.byte_buffer) > 0 and len(self.byte_buffer) < self.expected_len:
