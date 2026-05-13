@@ -23,6 +23,11 @@ For monitor messages (type 0xB3), the analyzer decodes and displays the followin
 - RX Power: Received power in mW (2-byte value)
 - Input Voltage: Input voltage in mV (2-byte value)
 
+### Rx Packet Ask message (Type 0xC1)
+
+Decodes Rx Propetary Packet (ASK) recieved on STWBC2-HB that are send from WLC RX.
+The recieved data are QI standard.
+
 ### Other Messages
 
 For other message types, the analyzer displays:
@@ -51,4 +56,12 @@ Byte 9:  Duty Cycle
 Bytes 10-11: Bridge Voltage (LSB first)
 Bytes 12-13: RX Power (LSB first)
 Bytes 16-17: Input Voltage (LSB first)
+```
+
+###  Rx Propetary Packet Message Structure (0xC1)
+```
+Byte 0:  0x54 (Start marker)
+Byte 1:  0xC1 (Message type)
+Byte 2:  Length
+Byte 3:Length  Bytes Recieved based on QI protocol
 ```

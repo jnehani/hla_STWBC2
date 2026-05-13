@@ -78,7 +78,7 @@ class Hla(HighLevelAnalyzer):
     def RxPacket_type(self, data_frame: AnalyzerFrame, msg_start: int, msg_end: int):
         """
         Process Rx Packet Ask message type (0xC1)
-        Decodes Rx Propetary Packet from the STWBC2-HB chip
+        Decodes Rx Propetary Packet recieved on STWBC2-HB chip
 
         Parameters:
         - data_frame: List of bytes containing the message data
