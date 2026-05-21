@@ -132,6 +132,8 @@ class Hla(HighLevelAnalyzer):
         - data_frame[27]:  Bridge Mode
         """
         control_error = data_frame[8] - 256 if data_frame[8] >= 128 else data_frame[8]
+        fod_margin_raw = data_frame[25] + data_frame[26] * 256
+        fod_margin = fod_margin_raw - 65536 if fod_margin_raw >= 32768 else fod_margin_raw
         print("STWBC2_TYPE_MONITOR {")
         print(f"  state:          {data_frame[3]}")
         print(f"  frequency:      {data_frame[4] + data_frame[5] * 256 + data_frame[6] * 65536 + data_frame[7] * 16777216} Hz")
@@ -142,13 +144,13 @@ class Hla(HighLevelAnalyzer):
         print(f"  input_voltage:  {data_frame[16] + data_frame[17] * 256} mV")
         print(f"  coil_temperature: {data_frame[18]} °C")
         print(f"  coil_current:   {data_frame[19] + data_frame[20] * 256} mA")
-        print(f"  fod_margin:     {data_frame[25] + data_frame[26] * 256} mW")
+        print(f"  fod_margin:     {fod_margin} mW")
         print(f"  bridge_mode:    {data_frame[27]}")
         print("}")
         
         # Create analyzer frame with decoded information
         return AnalyzerFrame('data', msg_start, msg_end, {
-            'info': f'type: Monitor, len: {data_frame[2]-3}, state: {data_frame[3]}, frequency: {data_frame[4] + data_frame[5] * 256 + data_frame[6] * 65536 + data_frame[7] * 16777216}, control_error: {control_error}, duty_cycle: {data_frame[9]}, bridge_voltage: {data_frame[10] + data_frame[11] * 256}, rx_power: {data_frame[12] + data_frame[13] * 256 + data_frame[14] * 65536 + data_frame[15] * 16777216}, input_voltage: {data_frame[16] + data_frame[17] * 256}, coil_temperature: {data_frame[18]}, coil_current: {data_frame[19] + data_frame[20] * 256}, fod_margin: {data_frame[25] + data_frame[26] * 256}, bridge_mode: {data_frame[27]}'
+            'info': f'type: Monitor, len: {data_frame[2]-3}, state: {data_frame[3]}, frequency: {data_frame[4] + data_frame[5] * 256 + data_frame[6] * 65536 + data_frame[7] * 16777216}, control_error: {control_error}, duty_cycle: {data_frame[9]}, bridge_voltage: {data_frame[10] + data_frame[11] * 256}, rx_power: {data_frame[12] + data_frame[13] * 256 + data_frame[14] * 65536 + data_frame[15] * 16777216}, input_voltage: {data_frame[16] + data_frame[17] * 256}, coil_temperature: {data_frame[18]}, coil_current: {data_frame[19] + data_frame[20] * 256}, fod_margin: {fod_margin}, bridge_mode: {data_frame[27]}'
 
         })
 
