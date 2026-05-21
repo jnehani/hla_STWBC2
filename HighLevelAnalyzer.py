@@ -124,8 +124,12 @@ class Hla(HighLevelAnalyzer):
         - data_frame[8]: Control error (positive or negative value))
         - data_frame[9]: Duty cycle
         - data_frame[10-11]: Bridge voltage (LSB first)
-        - data_frame[12-13]: RX power (LSB first)
+        - data_frame[12-15]: RX power (LSB first)
         - data_frame[16-17]: Input voltage (LSB first)
+        - data_frame[18]: Coil Temperature
+        - data_frame[19-20]: Coil Current (LSB first)
+        - data_frame[25-26]: Fod Margin
+        - data_frame[27]:  Bridge Mode
         """
         control_error = data_frame[8] - 256 if data_frame[8] >= 128 else data_frame[8]
         print("STWBC2_TYPE_MONITOR {")
@@ -134,13 +138,18 @@ class Hla(HighLevelAnalyzer):
         print(f"  control_error:  {control_error}")
         print(f"  duty_cycle:     {data_frame[9]} %")
         print(f"  bridge_voltage: {data_frame[10] + data_frame[11] * 256} mV")
-        print(f"  rx_power:       {data_frame[12] + data_frame[13] * 256} mW")
+        print(f"  rx_power:       {data_frame[12] + data_frame[13] * 256 + data_frame[14] * 65536 + data_frame[15] * 16777216} mW")
         print(f"  input_voltage:  {data_frame[16] + data_frame[17] * 256} mV")
+        print(f"  coil_temperature: {data_frame[18]} °C")
+        print(f"  coil_current:   {data_frame[19] + data_frame[20] * 256} mA")
+        print(f"  fod_margin:     {data_frame[25] + data_frame[26] * 256} mW")
+        print(f"  bridge_mode:    {data_frame[27]}")
         print("}")
         
         # Create analyzer frame with decoded information
         return AnalyzerFrame('data', msg_start, msg_end, {
-            'info': f'type: Monitor, len: {data_frame[2]-3}, state: {data_frame[3]}, frequency: {data_frame[4] + data_frame[5] * 256 + data_frame[6] * 65536 + data_frame[7] * 16777216}, control_error: {control_error}, duty_cycle: {data_frame[9]}, bridge_voltage: {data_frame[10] + data_frame[11] * 256}, rx_power: {data_frame[12] + data_frame[13] * 256}, input_voltage: {data_frame[16] + data_frame[17] * 256}'
+            'info': f'type: Monitor, len: {data_frame[2]-3}, state: {data_frame[3]}, frequency: {data_frame[4] + data_frame[5] * 256 + data_frame[6] * 65536 + data_frame[7] * 16777216}, control_error: {control_error}, duty_cycle: {data_frame[9]}, bridge_voltage: {data_frame[10] + data_frame[11] * 256}, rx_power: {data_frame[12] + data_frame[13] * 256 + data_frame[14] * 65536 + data_frame[15] * 16777216}, input_voltage: {data_frame[16] + data_frame[17] * 256}, coil_temperature: {data_frame[18]}, coil_current: {data_frame[19] + data_frame[20] * 256}, fod_margin: {data_frame[25] + data_frame[26] * 256}, bridge_mode: {data_frame[27]}'
+
         })
 
     def RxPacket_type(self, data_frame: AnalyzerFrame, msg_start: int, msg_end: int):
